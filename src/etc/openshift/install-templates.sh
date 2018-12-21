@@ -35,6 +35,6 @@ oc policy add-role-to-user edit system:serviceaccount:${project}:scdf
 
 echo "Adding 'scdf' Service Account to the 'anyuid' SCC..."
 
-oc adm policy add-scc-to-user anyuid system:serviceaccount:${project}:scdf
+oc adm policy add-scc-to-user anyuid system:serviceaccount:${project}:scdf --as system:admin
 
 echo "Templates installed."

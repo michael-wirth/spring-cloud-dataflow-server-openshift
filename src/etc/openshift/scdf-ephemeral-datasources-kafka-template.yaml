@@ -31,7 +31,7 @@ objects:
           cloud:
             deployer:
               openshift:
-                environmentVariables: 'SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=${KAFKA_SERVICE_HOST}:${KAFKA_SERVICE_PORT},SPRING_CLOUD_STREAM_KAFKA_BINDER_ZK_NODES=${KAFKA_ZK_SERVICE_HOST}:${KAFKA_ZK_SERVICE_PORT},SPRING_REDIS_HOST=${REDIS_SERVICE_HOST},SPRING_REDIS_PORT=${REDIS_SERVICE_PORT}'
+                environmentVariables: 'SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=${KAFKA_BROKER_SERVICE_HOST}:${KAFKA_BROKER_SERVICE_PORT},SPRING_CLOUD_STREAM_KAFKA_BINDER_ZK_NODES=${KAFKA_ZK_SERVICE_HOST}:${KAFKA_ZK_SERVICE_PORT},SPRING_REDIS_HOST=${REDIS_SERVICE_HOST},SPRING_REDIS_PORT=${REDIS_SERVICE_PORT}'
 
             dataflow.security.authentication.file.enabled: true
             dataflow.security.authentication.file.users.admin: 'admin, ROLE_MANAGE, ROLE_VIEW'
@@ -85,7 +85,7 @@ objects:
         spec:
           containers:
             - name: scdf-kafka
-              image: donovanmuller/spring-cloud-dataflow-server-openshift:1.2.1.RELEASE
+              image: 172.30.1.1:5000/myproject/spring-cloud-dataflow-server-openshift
               env:
                 - name: KUBERNETES_NAMESPACE
                   valueFrom:
@@ -175,7 +175,7 @@ objects:
     metadata:
       name: scdf-metrics-collector-config
     data:
-      SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS: ${KAFKA_SERVICE_HOST}:${KAFKA_SERVICE_PORT}
+      SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS: ${KAFKA_BROKER_SERVICE_HOST}:${KAFKA_BROKER_SERVICE_PORT}
       SPRING_CLOUD_STREAM_KAFKA_BINDER_ZK_NODES: ${KAFKA_ZK_SERVICE_HOST}:${KAFKA_ZK_SERVICE_PORT}
   - apiVersion: v1
     kind: DeploymentConfig
@@ -360,7 +360,7 @@ objects:
         spec:
           containers:
             - name: kafka-zk
-              image: digitalwonderland/zookeeper:latest
+              image: confluentinc/cp-zookeeper:latest
               ports:
                 - containerPort: 2181
               env:
@@ -368,6 +368,10 @@ objects:
                   value: '1'
                 - name: ZOOKEEPER_SERVER_1
                   value: kafka-zk
+                - name: ZOOKEEPER_CLIENT_PORT
+                  value: '2181'
+                - name: ZOOKEEPER_TICK_TIME
+                  value: '2000'
               readinessProbe:
                 tcpSocket:
                   port: 2181
@@ -415,8 +419,8 @@ objects:
             name: kafka-broker
         spec:
           containers:
-            - name: kafka
-              image: wurstmeister/kafka:0.10.2.1
+            - name: kafka-broker
+              image: confluentinc/cp-kafka:latest
               ports:
                 - containerPort: 9092
               env:
@@ -426,16 +430,23 @@ objects:
                   value: '999999999'
                 - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
                   value: 'false'
-                - name: KAFKA_PORT
-                  value: '9092'
-                - name: KAFKA_ADVERTISED_PORT
-                  value: '9092'
                 - name: KAFKA_ADVERTISED_HOST_NAME
                   valueFrom:
                     fieldRef:
+                      apiVersion: v1
                       fieldPath: status.podIP
                 - name: KAFKA_ZOOKEEPER_CONNECT
-                  value: kafka-zk:2181
+                  value: 'kafka-zk:2181'
+                - name: KAFKA_BROKER_ID
+                  value: '1'
+                - name: KAFKA_ADVERTISED_LISTENERS
+                  value: 'PLAINTEXT://localhost:9092'
+                - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+                  value: 'PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+                - name: KAFKA_INTER_BROKER_LISTENER_NAME
+                  value: PLAINTEXT
+                - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+                  value: 1
               readinessProbe:
                 tcpSocket:
                   port: 9092
@@ -452,12 +463,11 @@ objects:
     kind: Service
     metadata:
       labels:
-        name: kafka
-      name: kafka
+        name: kafka-broker
+      name: kafka-broker
     spec:
       ports:
         - port: 9092
-          name: kafka-port
           targetPort: 9092
           protocol: TCP
       selector:
