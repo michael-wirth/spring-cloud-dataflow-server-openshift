@@ -5,12 +5,12 @@
     <parent>
         <artifactId>spring-cloud-dataflow-server-openshift-parent</artifactId>
         <groupId>org.springframework.cloud</groupId>
-        <version>1.7.0.BUILD-SNAPSHOT</version>
+        <version>2.0.0.BUILD-SNAPSHOT</version>
     </parent>
 
     <artifactId>spring-cloud-dataflow-server-openshift-autoconfig</artifactId>
 
-    <name>Spring Auto Configuration of Data Flow Server for OpenShift</name>
+	<name>Spring Cloud Data Flow :: OpenShift Autoconfiguration</name>
 
     <dependencies>
         <dependency>
@@ -33,7 +33,7 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-kubernetes</artifactId>
+            <artifactId>spring-cloud-starter-kubernetes-all</artifactId>
             <scope>runtime</scope>
         </dependency>
     </dependencies>

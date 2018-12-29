@@ -16,9 +16,6 @@
 
 package org.springframework.cloud.dataflow.server.openshift;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.AutoConfigureOrder;
 import org.springframework.cloud.deployer.resource.docker.DockerResourceLoader;
@@ -30,8 +27,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.core.io.ResourceLoader;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
- * AutoConfiguration for the {@link OpenShiftDataFlowServer}
+ * AutoConfiguration for the OpenShiftDataFlowServer
  *
  * @author Donovan Muller
  */

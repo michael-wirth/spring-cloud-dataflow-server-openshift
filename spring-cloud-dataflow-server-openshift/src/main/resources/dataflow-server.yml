@@ -1,15 +1,11 @@
 server:
   port: 9393
-management:
-  contextPath: /management
+
 info:
   app:
     name: "@project.artifactId@"
     description: "@project.description@"
     version: "@project.version@"
-security:
-  basic:
-    enabled: false
 
 spring:
   application:
@@ -17,6 +13,19 @@ spring:
   cloud:
     config:
       uri: http://localhost:8888
+
+    skipper:
+      client:
+        serverUri: http://localhost:7577
+      server:
+        enableLocalPlatform: false
+
+management:
+  contextPath: /management
+  endpoints:
+    web:
+      exposure:
+        include: '*'
 
 ---
 # Configuration options when using Kafka binder:
@@ -37,8 +46,8 @@ spring:
 
 
 # If you prefer to use Eureka to locate the Config Server, you can do that by setting
-# spring.cloud.config.discovery.enabled=true (default "false"). The net result of that is 
-# that client apps all need a bootstrap.yml (or an environment variable) with the Eureka 
+# spring.cloud.config.discovery.enabled=true (default "false"). The net result of that is
+# that client apps all need a bootstrap.yml (or an environment variable) with the Eureka
 # server address, e.g. in eureka.client.serviceUrl.defaultZone
 #---
 #spring:
