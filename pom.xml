@@ -25,7 +25,7 @@
 	</scm>
 
 	<modules>
-		<module>spring-cloud-dataflow-server-openshift-autoconfig</module>
+		<module>spring-cloud-dataflow-platform-openshift</module>
 		<module>spring-cloud-dataflow-server-openshift</module>
 		<module>spring-cloud-dataflow-server-openshift-docs</module>
 	</modules>

@@ -1,94 +1,101 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
 
-    <parent>
-        <artifactId>spring-cloud-dataflow-server-openshift-parent</artifactId>
-        <groupId>org.springframework.cloud</groupId>
-        <version>2.0.0.BUILD-SNAPSHOT</version>
-    </parent>
+	<parent>
+		<artifactId>spring-cloud-dataflow-server-openshift-parent</artifactId>
+		<groupId>org.springframework.cloud</groupId>
+		<version>2.0.0.BUILD-SNAPSHOT</version>
+	</parent>
 
-    <artifactId>spring-cloud-dataflow-server-openshift</artifactId>
+	<artifactId>spring-cloud-dataflow-server-openshift</artifactId>
 
-    <!-- Used in the Spring Boot Banner -->
-    <name>Spring Cloud Data Flow :: OpenShift Server</name>
+	<!-- Used in the Spring Boot Banner -->
+	<name>Spring Cloud Data Flow :: OpenShift Server</name>
 
 	<properties>
 		<docker.image.prefix>springcloud</docker.image.prefix>
 	</properties>
 
-    <dependencies>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-dataflow-server-openshift-autoconfig</artifactId>
-            <version>${project.version}</version>
-        </dependency>
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-dataflow-platform-openshift</artifactId>
+			<version>${project.version}</version>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
 			<scope>runtime</scope>
 		</dependency>
 		<dependency>
-            <groupId>org.mariadb.jdbc</groupId>
-            <artifactId>mariadb-java-client</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <scope>runtime</scope>
-        </dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-scheduler-kubernetes</artifactId>
+			<version>1.1.0.BUILD-SNAPSHOT</version>
+		</dependency>
+		<dependency>
+			<groupId>org.mariadb.jdbc</groupId>
+			<artifactId>mariadb-java-client</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<scope>runtime</scope>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
-    </dependencies>
-    <build>
-        <resources>
-            <resource>
-                <directory>src/main/resources</directory>
-                <filtering>true</filtering>
-                <includes>
-                    <include>META-INF/*.properties</include>
-                    <include>META-INF/spring.factories</include>
-                    <include>dataflow-server.yml</include>
-                </includes>
-            </resource>
-        </resources>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-resources-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>io.fabric8</groupId>
-                <artifactId>docker-maven-plugin</artifactId>
-                <version>0.28.0</version>
-                <configuration>
-                    <images>
-                        <image>
-                            <name>donovanmuller/${project.artifactId}</name>
-                            <build>
-                                <from>java:8-alpine</from>
-                                <volumes>
-                                    <volume>/tmp</volume>
-                                </volumes>
-                                <entryPoint>
-                                    exec java $JAVA_OPTS -Djava.security.egd=file:/dev/urandom -jar /maven/spring-cloud-dataflow-server-openshift.jar
-                                </entryPoint>
-                                <assembly>
-                                    <descriptor>assembly.xml</descriptor>
-                                </assembly>
-                            </build>
-                        </image>
-                    </images>
-                </configuration>
-            </plugin>
+	</dependencies>
+	<build>
+		<resources>
+			<resource>
+				<directory>src/main/resources</directory>
+				<filtering>true</filtering>
+				<includes>
+					<include>META-INF/*.properties</include>
+					<include>META-INF/spring.factories</include>
+					<include>dataflow-server.yml</include>
+				</includes>
+			</resource>
+		</resources>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-resources-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>io.fabric8</groupId>
+				<artifactId>docker-maven-plugin</artifactId>
+				<version>0.28.0</version>
+				<configuration>
+					<images>
+						<image>
+							<name>donovanmuller/${project.artifactId}</name>
+							<build>
+								<from>java:8-alpine</from>
+								<volumes>
+									<volume>/tmp</volume>
+								</volumes>
+								<entryPoint>
+									exec java $JAVA_OPTS -Djava.security.egd=file:/dev/urandom -jar
+									/maven/spring-cloud-dataflow-server-openshift.jar
+								</entryPoint>
+								<assembly>
+									<descriptor>assembly.xml</descriptor>
+								</assembly>
+							</build>
+						</image>
+					</images>
+				</configuration>
+			</plugin>
 			<plugin>
 				<groupId>com.google.cloud.tools</groupId>
 				<artifactId>jib-maven-plugin</artifactId>
@@ -99,10 +106,10 @@
 					</from>
 					<to>
 						<!-- <image>${docker.image.prefix}/${project.artifactId}</image> -->
-                        <image>172.30.1.1:5000/scdf/${project.artifactId}</image>
+						<image>172.30.1.1:5000/scdf/${project.artifactId}</image>
 					</to>
 				</configuration>
 			</plugin>
-        </plugins>
-    </build>
+		</plugins>
+	</build>
 </project>
