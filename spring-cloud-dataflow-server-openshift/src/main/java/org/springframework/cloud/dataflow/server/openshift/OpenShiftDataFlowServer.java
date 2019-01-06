@@ -11,11 +11,13 @@ import org.springframework.cloud.deployer.spi.local.LocalDeployerAutoConfigurati
  *
  * @author Donovan Muller
  */
-@SpringBootApplication(exclude = {LocalDeployerAutoConfiguration.class, KubernetesAutoConfiguration.class})
+@SpringBootApplication(exclude = { LocalDeployerAutoConfiguration.class,
+		KubernetesAutoConfiguration.class })
 @EnableDataFlowServer
 public class OpenShiftDataFlowServer {
 
 	public static void main(String[] args) {
 		SpringApplication.run(OpenShiftDataFlowServer.class, args);
 	}
+
 }

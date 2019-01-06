@@ -13,7 +13,26 @@ spring:
   cloud:
     config:
       uri: http://localhost:8888
-
+    dataflow:
+      features:
+        schedules-enabled: true
+        streams-enabled: true
+      task:
+        platform:
+          openshift:
+            accounts:
+              default:
+                namespace: scdf
+                createJob: true
+                environmentVariables:
+                  - 'SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=${DEPLOYER_KAFKA_BOOTSTRAP_SERVER}'
+                  - 'SPRING_REDIS_HOST=${REDIS_SERVICE_HOST}'
+                  - 'SPRING_REDIS_PORT=${REDIS_SERVICE_PORT}'
+                  - 'SPRING_CLOUD_CONFIG_ENABLED=false'
+                  - 'SPRING_AUTOCONFIGURE_EXCLUDE=org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration,org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration'
+                  - 'MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS=always'
+                  - 'JAVA_OPTIONS=-Duser.timezone=Europe/Zurich'
+                  - 'TZ=Europe/Zurich'
     skipper:
       client:
         serverUri: http://localhost:7577
@@ -27,14 +46,22 @@ management:
       exposure:
         include: '*'
 
+maven:
+  remote-repositories:
+    spring:
+      url: https://repo.spring.io/libs-snapshot
+
+kubernetes:
+  service:
+    host: true
 ---
 # Configuration options when using Kafka binder:
-spring:
-  cloud:
-    deployer:
-      kubernetes:
-        createLoadBalancer: false
-        environmentVariables: 'SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=${KAFKA_SERVICE_HOST}:${KAFKA_SERVICE_PORT},SPRING_CLOUD_STREAM_KAFKA_BINDER_ZK_NODES=${ZK_SERVICE_HOST}:${ZK_SERVICE_PORT}'
+#spring:
+#  cloud:
+#    deployer:
+#      kubernetes:
+#        createLoadBalancer: false
+#        environmentVariables: 'SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=${KAFKA_SERVICE_HOST}:${KAFKA_SERVICE_PORT},SPRING_CLOUD_STREAM_KAFKA_BINDER_ZK_NODES=${ZK_SERVICE_HOST}:${ZK_SERVICE_PORT}'
 
 # Configuration options when using RabbitMQ binder:
 #spring:

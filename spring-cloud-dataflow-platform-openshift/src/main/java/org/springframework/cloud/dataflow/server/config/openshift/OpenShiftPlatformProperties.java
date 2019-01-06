@@ -21,4 +21,5 @@ public class OpenShiftPlatformProperties {
 	public void setAccounts(Map<String, OpenShiftDeployerProperties> accounts) {
 		this.accounts = accounts;
 	}
+
 }

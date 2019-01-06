@@ -4,10 +4,9 @@
 
 	<parent>
 		<groupId>org.springframework.cloud</groupId>
-		<artifactId>spring-cloud-dataflow-parent</artifactId>
-		<version>2.0.0.BUILD-SNAPSHOT</version>
-		<relativePath />
-	</parent>
+	    <artifactId>spring-cloud-skipper-openshift</artifactId>
+	    <version>2.0.0.BUILD-SNAPSHOT</version>
+    </parent>
 
 	<groupId>org.springframework.cloud</groupId>
 	<artifactId>spring-cloud-dataflow-server-openshift-parent</artifactId>
