@@ -12,7 +12,7 @@
 	<artifactId>spring-cloud-dataflow-server-openshift</artifactId>
 
 	<!-- Used in the Spring Boot Banner -->
-	<name>Spring Cloud Data Flow :: OpenShift Server</name>
+	<name>Spring Cloud Data Flow - OpenShift Server</name>
 
 	<properties>
 		<docker.image.prefix>donovanmuller</docker.image.prefix>
@@ -32,7 +32,6 @@
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-scheduler-kubernetes</artifactId>
-			<version>1.1.0.BUILD-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<groupId>org.mariadb.jdbc</groupId>
@@ -78,15 +77,14 @@
 				<configuration>
 					<images>
 						<image>
-							<name>donovanmuller/${project.artifactId}</name>
+							<name>${docker.image.prefix}/${project.artifactId}</name>
 							<build>
-								<from>java:8-alpine</from>
+								<from>openjdk:8-alpine</from>
 								<volumes>
 									<volume>/tmp</volume>
 								</volumes>
 								<entryPoint>
-									exec java $JAVA_OPTS -Djava.security.egd=file:/dev/urandom -jar
-									/maven/spring-cloud-dataflow-server-openshift.jar
+									exec java $JAVA_OPTS -Djava.security.egd=file:/dev/urandom -jar /maven/${artifactId}.jar
 								</entryPoint>
 								<assembly>
 									<descriptor>assembly.xml</descriptor>
@@ -99,14 +97,19 @@
 			<plugin>
 				<groupId>com.google.cloud.tools</groupId>
 				<artifactId>jib-maven-plugin</artifactId>
-				<version>1.0.0-rc1</version>
+				<version>1.0.0-rc2</version>
 				<configuration>
 					<from>
-						<image>springcloud/openjdk:latest</image>
+						<image>openjdk:8-alpine</image>
 					</from>
 					<to>
 						 <image>${docker.image.prefix}/${project.artifactId}</image>
 					</to>
+					<container>
+						<volumes>
+							<volume>/tmp</volume>
+						</volumes>
+					</container>
 				</configuration>
 			</plugin>
 		</plugins>

@@ -10,7 +10,7 @@
 
     <artifactId>spring-cloud-dataflow-server-openshift-docs</artifactId>
 
-	<name>Spring Cloud Data Flow :: OpenShift Documentation</name>
+	<name>Spring Cloud Data Flow - OpenShift Documentation</name>
 
     <profiles>
         <profile>

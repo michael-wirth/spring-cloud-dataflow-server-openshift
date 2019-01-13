@@ -10,7 +10,7 @@
 
     <artifactId>spring-cloud-dataflow-platform-openshift</artifactId>
 
-	<name>Spring Cloud Data Flow :: OpenShift Platform</name>
+	<name>Spring Cloud Data Flow - OpenShift Platform</name>
 
     <dependencies>
         <dependency>
