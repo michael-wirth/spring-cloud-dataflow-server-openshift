@@ -61,7 +61,7 @@ objects:
           containers:
             -
               name: scdf-kafka
-              image: scdf/spring-cloud-dataflow-server-openshift
+              image: michaelwirth/spring-cloud-dataflow-server-openshift
               env:
                 -
                   name: KUBERNETES_NAMESPACE

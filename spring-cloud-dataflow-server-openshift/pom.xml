@@ -15,7 +15,7 @@
 	<name>Spring Cloud Data Flow - OpenShift Server</name>
 
 	<properties>
-		<docker.image.prefix>donovanmuller</docker.image.prefix>
+		<docker.image.prefix>michaelwirth</docker.image.prefix>
 	</properties>
 
 	<dependencies>
@@ -71,41 +71,17 @@
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
 			<plugin>
-				<groupId>io.fabric8</groupId>
-				<artifactId>docker-maven-plugin</artifactId>
-				<version>0.28.0</version>
-				<configuration>
-					<images>
-						<image>
-							<name>${docker.image.prefix}/${project.artifactId}</name>
-							<build>
-								<from>openjdk:8-alpine</from>
-								<volumes>
-									<volume>/tmp</volume>
-								</volumes>
-								<entryPoint>
-									exec java $JAVA_OPTS -Djava.security.egd=file:/dev/urandom -jar /maven/${artifactId}.jar
-								</entryPoint>
-								<assembly>
-									<descriptor>assembly.xml</descriptor>
-								</assembly>
-							</build>
-						</image>
-					</images>
-				</configuration>
-			</plugin>
-			<plugin>
 				<groupId>com.google.cloud.tools</groupId>
 				<artifactId>jib-maven-plugin</artifactId>
-				<version>1.0.0-rc2</version>
 				<configuration>
 					<from>
-						<image>openjdk:8-alpine</image>
+						<image>openjdk:11-slim</image>
 					</from>
 					<to>
 						 <image>${docker.image.prefix}/${project.artifactId}</image>
 					</to>
 					<container>
+						<jvmFlags>-Djava.security.egd=file:/dev/urandom</jvmFlags>
 						<volumes>
 							<volume>/tmp</volume>
 						</volumes>
