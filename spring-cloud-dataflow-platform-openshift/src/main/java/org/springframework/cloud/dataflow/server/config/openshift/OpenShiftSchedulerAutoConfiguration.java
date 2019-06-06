@@ -43,13 +43,13 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 @Conditional({ SchedulerConfiguration.SchedulerConfigurationPropertyChecker.class })
-@ConditionalOnProperty(name = "kubernetes.service.host")
 @EnableConfigurationProperties(OpenShiftPlatformProperties.class)
 public class OpenShiftSchedulerAutoConfiguration {
 
 	@Bean
 	@ConditionalOnMissingBean
-	public Scheduler scheduler(OpenShiftPlatformProperties openShiftPlatformProperties,
+	public OpenShiftScheduler scheduler(
+			OpenShiftPlatformProperties openShiftPlatformProperties,
 			MavenProperties mavenProperties,
 			MavenResourceJarExtractor mavenResourceJarExtractor,
 			ResourceHash resourceHash, VolumeMountFactory volumeMountFactory) {

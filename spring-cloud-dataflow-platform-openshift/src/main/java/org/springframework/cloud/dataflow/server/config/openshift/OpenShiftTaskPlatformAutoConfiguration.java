@@ -26,6 +26,7 @@ import io.fabric8.openshift.client.OpenShiftClient;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.dataflow.core.Launcher;
 import org.springframework.cloud.dataflow.core.TaskPlatform;
+import org.springframework.cloud.dataflow.server.config.CloudProfileProvider;
 import org.springframework.cloud.deployer.autoconfigure.DelegatingResourceLoaderBuilderCustomizer;
 import org.springframework.cloud.deployer.resource.docker.DockerResourceLoader;
 import org.springframework.cloud.deployer.resource.maven.MavenProperties;
@@ -38,12 +39,16 @@ import org.springframework.cloud.deployer.spi.openshift.maven.MavenResourceJarEx
 import org.springframework.cloud.deployer.spi.openshift.resources.pod.OpenShiftContainerFactory;
 import org.springframework.cloud.deployer.spi.openshift.resources.volumes.VolumeMountFactory;
 import org.springframework.cloud.deployer.spi.task.TaskLauncher;
+import org.springframework.cloud.scheduler.spi.openshift.OpenShiftScheduler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
+
+import static org.springframework.cloud.dataflow.server.config.openshift.OpenShiftCloudProfileProvider.PROFILE;
 
 /**
- * Configures the Spring Cloud TaskPlatform based on feature toggle settings and ifrunning
- * on Openshift.
+ * Configures the Spring Cloud TaskPlatform based on feature toggle settings and if
+ * running on Openshift.
  *
  * @author Michael Wirth
  */
@@ -54,25 +59,32 @@ public class OpenShiftTaskPlatformAutoConfiguration {
 	@Bean
 	public TaskPlatform openShiftTaskPlatform(
 			OpenShiftPlatformProperties openShiftPlatformProperties,
-			MavenProperties mavenProperties, VolumeMountFactory volumeMountFactory,
+			OpenShiftScheduler openShiftScheduler, MavenProperties mavenProperties,
+			VolumeMountFactory volumeMountFactory,
 			MavenResourceJarExtractor mavenResourceJarExtractor,
-			ResourceHash resourceHash) {
+			ResourceHash resourceHash, Environment environment) {
 		List<Launcher> launchers = new ArrayList<>();
 		Map<String, OpenShiftDeployerProperties> k8sDeployerPropertiesMap = openShiftPlatformProperties
 				.getAccounts();
 		k8sDeployerPropertiesMap.forEach((key, value) -> {
 			Launcher launcher = createAndSaveKubernetesTaskLaunchers(key, value,
-					mavenProperties, volumeMountFactory, mavenResourceJarExtractor,
-					resourceHash);
+					openShiftScheduler, mavenProperties, volumeMountFactory,
+					mavenResourceJarExtractor, resourceHash);
 			launchers.add(launcher);
 		});
 
-		return new TaskPlatform("openshift", launchers);
+		TaskPlatform taskPlatform = new TaskPlatform(PROFILE, launchers);
+		CloudProfileProvider cloudProfileProvider = new OpenShiftCloudProfileProvider();
+		if (cloudProfileProvider.isCloudPlatform(environment)) {
+			taskPlatform.setPrimary(true);
+		}
+		return taskPlatform;
 	}
 
 	protected Launcher createAndSaveKubernetesTaskLaunchers(String account,
 			OpenShiftDeployerProperties openShiftDeployerProperties,
-			MavenProperties mavenProperties, VolumeMountFactory volumeMountFactory,
+			OpenShiftScheduler openShiftScheduler, MavenProperties mavenProperties,
+			VolumeMountFactory volumeMountFactory,
 			MavenResourceJarExtractor mavenResourceJarExtractor,
 			ResourceHash resourceHash) {
 		OpenShiftClient openShiftClient = new DefaultOpenShiftClient()
@@ -86,7 +98,8 @@ public class OpenShiftTaskPlatformAutoConfiguration {
 						mavenProperties, openShiftClient, mavenResourceJarExtractor,
 						resourceHash, containerFactory));
 
-		Launcher launcher = new Launcher(account, "openshift", openShiftTaskLauncher);
+		Launcher launcher = new Launcher(account, "Openshift", openShiftTaskLauncher,
+				openShiftScheduler);
 		launcher.setDescription(
 				String.format("master url = [%s], namespace = [%s], api version = [%s]",
 						openShiftClient.getMasterUrl(), openShiftClient.getNamespace(),

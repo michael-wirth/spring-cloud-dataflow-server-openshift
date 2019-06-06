@@ -25,7 +25,7 @@ spring:
                 namespace: scdf
                 createJob: true
                 environmentVariables:
-                  - 'SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=${DEPLOYER_KAFKA_BOOTSTRAP_SERVER}'
+                  - 'SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=${KAFKA_BROKER_SERVICE_HOST}:${KAFKA_BROKER_SERVICE_PORT}'
                   - 'SPRING_REDIS_HOST=${REDIS_SERVICE_HOST}'
                   - 'SPRING_REDIS_PORT=${REDIS_SERVICE_PORT}'
                   - 'SPRING_CLOUD_CONFIG_ENABLED=false'
@@ -40,11 +40,14 @@ spring:
         enableLocalPlatform: false
 
 management:
-  contextPath: /management
   endpoints:
     web:
       exposure:
         include: '*'
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
 
 maven:
   remote-repositories:

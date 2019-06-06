@@ -1,0 +1,585 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: scdf
+secrets:
+  - name: scdf-secrets
+
+---
+apiVersion: v1
+kind: Template
+metadata:
+  name: "spring-cloud-dataflow-server"
+  annotations:
+    openshift.io/display-name: "Spring Cloud Data Flow Server 2.x"
+    description: |-
+      A Spring Cloud Data Flow Server for OpenShift template.
+      This template deploys the Data Flow Server, Skipper server and an ephemeral Redis container.
+      Precondition: Kafka and Postgres must be preinstalled
+      These resources are configured by means of the ConfigMap.
+    iconClass: "icon-spring"
+    tags: "integration,spring-cloud"
+message: |-
+  Spring Cloud Data Flow Server for OpenShift, Skipper and Redis are being deployed...
+labels:
+  template: scdf-kafka
+objects:
+  - apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: scdf-kafka-config
+    data:
+      application.yaml: >
+        health.config.enabled: false
+
+        management:
+          endpoints:
+            web:
+              exposure:
+                include: '*'
+          endpoint:
+            health:
+              show-details: always
+
+        spring:
+          cloud:
+            dataflow:
+              security:
+                authentication:
+                  file:
+                    enabled: true
+                    users:
+                      admin: 'admin, ROLE_MANAGE, ROLE_VIEW'
+                      user: 'password, ROLE_VIEW, ROLE_CREATE'
+              metrics.collector.uri: 'http://scdf-metrics-collector:8080'
+              application-properties:
+                stream:
+                  spring.cloud.config.eanbled: false
+                  spring.cloud.stream.bindings.applicationMetrics.destination: metrics
+                  spring.cloud.stream.kafka.binder.brokers: ${KAFKA_BROKER_SERVICE_HOST}:${KAFKA_BROKER_SERVICE_PORT}
+                  management.endpoints.web.exposure.include: '*'
+                  management.endpoint.health.show-details: always
+                  management.metrics.export.prometheus.enabled: true
+                task:
+                  spring.cloud.config.eanbled: false
+                  spring.cloud.stream.bindings.applicationMetrics.destination: metrics
+                  spring.cloud.stream.kafka.binder.brokers: ${KAFKA_BROKER_SERVICE_HOST}:${KAFKA_BROKER_SERVICE_PORT}
+                  management.endpoints.web.exposure.include: '*'
+                  management.endpoint.health.show-details: always
+              features:
+                schedules-enabled: true
+                streams-enabled: true
+                tasks-enabled: true
+
+            deployer:
+              openshift:
+                environmentVariables:
+                  - 'SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=${KAFKA_BROKER_SERVICE_HOST}:${KAFKA_BROKER_SERVICE_PORT}'
+                  - 'SPRING_REDIS_HOST=redis'
+                  - 'SPRING_REDIS_PORT=6379'
+                  - 'SPRING_CLOUD_CONFIG_ENABLED=false'
+                  - 'SPRING_AUTOCONFIGURE_EXCLUDE=org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration,org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration'
+                  - 'MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS=always'
+                  - 'JAVA_OPTIONS=-Duser.timezone=Europe/Zurich'
+                  - 'TZ=Europe/Zurich'
+                default-s2i-image: fabric8/s2i-java:latest-java11
+                container-command: /usr/local/s2i/run
+
+              task:
+                platform:
+                  openshift:
+                    accounts:
+                      default:
+                        namespace: scdf
+
+            skipper:
+              server:
+                enableLocalPlatform: false
+                platform:
+                  openshift:
+                    accounts:
+                      default:
+                        namespace: scdf
+                        environmentVariables:
+                          - 'SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=${KAFKA_BROKER_SERVICE_HOST}:${KAFKA_BROKER_SERVICE_PORT}'
+                          - 'SPRING_REDIS_HOST=redis'
+                          - 'SPRING_REDIS_PORT=6379'
+                          - 'SPRING_CLOUD_CONFIG_ENABLED=false'
+                          - 'SPRING_AUTOCONFIGURE_EXCLUDE=org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration,org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration'
+                          - 'MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS=always'
+                          - 'JAVA_OPTIONS=-Duser.timezone=Europe/Zurich'
+                          - 'TZ=Europe/Zurich'
+
+          datasource:
+            url: jdbc:postgresql://scdf-data:5432/scdf-data
+            driverClassName: org.postgresql.Driver
+            testOnBorrow: true
+            validationQuery: 'SELECT 1'
+          redis:
+            host: redis
+            port: 6379
+        # Currently only support for one additional remote Maven repository
+
+        # If additional repositories or more advanced configurations are required,
+        please make use of the SPRING_APPLICATION_JSON parameter
+
+        maven:
+          resolvePom: false
+          remote-repositories.spring:
+            url: https://repo.spring.io/libs-snapshot
+            auth:
+              username:
+              password:
+      bootstrap.yml: |-
+        spring:
+          cloud:
+            config:
+              enabled: false
+  - apiVersion: v1
+    kind: Secret
+    metadata:
+      name: scdf-secrets
+    stringData:
+      spring.cloud.dataflow.metrics.collector.username: '${METRICS_SECURITY_USERNAME}'
+      spring.cloud.dataflow.metrics.collector.password: '${METRICS_SECURITY_PASSWORD}'
+  - apiVersion: v1
+    kind: DeploymentConfig
+    metadata:
+      name: scdf-kafka
+    spec:
+      triggers:
+        - type: ConfigChange
+      replicas: 1
+      selector:
+        name: scdf-kafka
+      template:
+        metadata:
+          labels:
+            name: scdf-kafka
+        spec:
+#          initContainers:
+#            - name: init
+#              image: tutum/curl
+#              command: ['sh', '-c', 'curl -X POST "http://localhost:9393/apps?force=true&uri=https://repo.spring.io/libs-release-local/org/springframework/cloud/stream/app/spring-cloud-stream-app-descriptor/Einstein.SR3/spring-cloud-stream-app-descriptor-Einstein.SR3.stream-apps-kafka-docker" && curl -X POST "http://localhost:9393/apps?force=true&uri=https://repo.spring.io/libs-release-local/org/springframework/cloud/task/app/spring-cloud-task-app-descriptor/Elston.RELEASE/spring-cloud-task-app-descriptor-Elston.RELEASE.task-apps-docker"']
+          containers:
+            - name: scdf-kafka
+              image: michaelwirth/spring-cloud-dataflow-server-openshift
+              env:
+                - name: KUBERNETES_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.namespace
+                - name: SPRING_CLOUD_KUBERNETES_SECRETS_ENABLE_API
+                  value: 'true'
+                - name: SPRING_CLOUD_KUBERNETES_SECRETS_NAME
+                  value: scdf-secrets
+                - name: SPRING_CLOUD_KUBERNETES_CONFIG_NAME
+                  value: scdf-kafka-config
+                - name: JAVA_OPTS
+                  value: '${JAVA_OPTS}'
+                - name: SPRING_CLOUD_CONFIG_SERVER_BOOTSTRAP
+                  value: '${ENABLE_CONFIG_SERVER}'
+                - name: SPRING_CLOUD_DATAFLOW_FEATURES_ANALYTICS_ENABLED
+                  value: '${ENABLE_ANALYTICS}'
+                - name: SPRING_CLOUD_DEPLOYER_OPENSHIFT_REQUESTS_MEMORY
+                  value: '${DEPLOYER_REQUESTS_MEMORY}'
+                - name: SPRING_CLOUD_DEPLOYER_OPENSHIFT_LIMITS_MEMORY
+                  value: '${DEPLOYER_LIMITS_MEMORY}'
+                - name: SPRING_CLOUD_DEPLOYER_OPENSHIFT_REQUESTS_CPU
+                  value: '${DEPLOYER_REQUESTS_CPU}'
+                - name: SPRING_CLOUD_DEPLOYER_OPENSHIFT_LIMITS_CPU
+                  value: '${DEPLOYER_LIMITS_CPU}'
+                - name: SPRING_DATASOURCE_USERNAME
+                  valueFrom:
+                    secretKeyRef:
+                      key: database-user
+                      name: scdf-data
+                - name: SPRING_DATASOURCE_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      key: database-password
+                      name: scdf-data
+                - name: SPRING_CLOUD_SKIPPER_CLIENT_SERVER_URI
+                  value: 'http://scdf-skipper:7577/api'
+                - name: SPRING_APPLICATION_JSON
+                  value: '${SPRING_APPLICATION_JSON}'
+                - name: TZ
+                  value: 'Europe/Zurich'
+
+              ports:
+                - name: http
+                  containerPort: 9393
+              readinessProbe:
+                httpGet:
+                  path: /actuator/info
+                  port: 9393
+                  scheme: HTTP
+                initialDelaySeconds: 40
+                timeoutSeconds: 10
+              livenessProbe:
+                httpGet:
+                  path: /actuator/health
+                  port: 9393
+                  scheme: HTTP
+                initialDelaySeconds: 40
+                timeoutSeconds: 10
+              resources:
+                limits:
+                  cpu: '${DEPLOYER_SERVER_LIMITS_CPU}'
+                  memory: '${DEPLOYER_SERVER_LIMITS_MEMORY}'
+                requests:
+                  cpu: '${DEPLOYER_SERVER_REQUESTS_CPU}'
+                  memory: '${DEPLOYER_SERVER_REQUESTS_MEMORY}'
+          restartPolicy: Always
+          serviceAccount: scdf
+  - apiVersion: v1
+    kind: DeploymentConfig
+    metadata:
+      name: scdf-skipper
+    spec:
+      triggers:
+        - type: ConfigChange
+      replicas: 1
+      selector:
+        name: scdf-skipper
+      template:
+        metadata:
+          labels:
+            name: scdf-skipper
+        spec:
+          containers:
+            - name: scdf-skipper
+              image: michaelwirth/spring-cloud-skipper-server-openshift
+              env:
+                - name: KUBERNETES_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.namespace
+                - name: SPRING_CLOUD_KUBERNETES_SECRETS_ENABLE_API
+                  value: 'true'
+                - name: SPRING_CLOUD_KUBERNETES_SECRETS_NAME
+                  value: scdf-secrets
+                - name: SPRING_CLOUD_KUBERNETES_CONFIG_NAME
+                  value: scdf-kafka-config
+                - name: JAVA_OPTS
+                  value: '${JAVA_OPTS}'
+                - name: SPRING_CLOUD_CONFIG_SERVER_BOOTSTRAP
+                  value: '${ENABLE_CONFIG_SERVER}'
+                - name: SPRING_CLOUD_DATAFLOW_FEATURES_ANALYTICS_ENABLED
+                  value: '${ENABLE_ANALYTICS}'
+                - name: SPRING_CLOUD_DEPLOYER_OPENSHIFT_REQUESTS_MEMORY
+                  value: '${DEPLOYER_REQUESTS_MEMORY}'
+                - name: SPRING_CLOUD_DEPLOYER_OPENSHIFT_LIMITS_MEMORY
+                  value: '${DEPLOYER_LIMITS_MEMORY}'
+                - name: SPRING_CLOUD_DEPLOYER_OPENSHIFT_REQUESTS_CPU
+                  value: '${DEPLOYER_REQUESTS_CPU}'
+                - name: SPRING_CLOUD_DEPLOYER_OPENSHIFT_LIMITS_CPU
+                  value: '${DEPLOYER_LIMITS_CPU}'
+                - name: SPRING_DATASOURCE_USERNAME
+                  valueFrom:
+                    secretKeyRef:
+                      key: database-user
+                      name: scdf-data
+                - name: SPRING_DATASOURCE_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      key: database-password
+                      name: scdf-data
+                - name: SPRING_APPLICATION_JSON
+                  value: '${SPRING_APPLICATION_JSON}'
+                - name: TZ
+                  value: 'Europe/Zurich'
+                - # ProfileApplictionListener must be ignore or spring.cloud.kubernetes module gets disabled
+                  name: SPRING_CLOUD_SKIPPER_SERVER_PROFILEAPPLICATIONLISTENER_IGNORE
+                  value: 'true'
+              ports:
+                - name: http
+                  containerPort: 7577
+              readinessProbe:
+                httpGet:
+                  path: /actuator/info
+                  port: 7577
+                  scheme: HTTP
+                initialDelaySeconds: 40
+                timeoutSeconds: 10
+              livenessProbe:
+                httpGet:
+                  path: /actuator/health
+                  port: 7577
+                  scheme: HTTP
+                initialDelaySeconds: 40
+                timeoutSeconds: 10
+              resources:
+                limits:
+                  cpu: '${DEPLOYER_SERVER_LIMITS_CPU}'
+                  memory: '${DEPLOYER_SERVER_LIMITS_MEMORY}'
+                requests:
+                  cpu: '${DEPLOYER_SERVER_REQUESTS_CPU}'
+                  memory: '${DEPLOYER_SERVER_REQUESTS_MEMORY}'
+          restartPolicy: Always
+          serviceAccount: scdf
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        name: scdf-kafka
+      name: scdf-kafka
+    spec:
+      ports:
+        - name: http
+          port: 9393
+          targetPort: http
+      selector:
+        name: scdf-kafka
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        name: scdf-skipper
+      name: scdf-skipper
+    spec:
+      ports:
+        - name: http
+          port: 7577
+          targetPort: http
+      selector:
+        name: scdf-skipper
+  - apiVersion: v1
+    kind: Route
+    metadata:
+      name: scdf-kafka
+    spec:
+      host: '${ROUTE_HOST}'
+      to:
+        kind: Service
+        name: scdf-kafka
+      port:
+        targetPort: http
+  - apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: scdf-metrics-collector-config
+    data:
+      SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS: '${KAFKA_BROKER_SERVICE_HOST}:${KAFKA_BROKER_SERVICE_PORT}'
+  - apiVersion: v1
+    kind: DeploymentConfig
+    metadata:
+      name: scdf-metrics-collector
+    spec:
+      triggers:
+        - type: ConfigChange
+      replicas: 1
+      selector:
+        name: scdf-metrics-collector
+      template:
+        metadata:
+          labels:
+            name: scdf-metrics-collector
+        spec:
+          containers:
+            - name: scdf-metrics-collector
+              image: michaelwirth/metrics-collector-kafka:latest
+              env:
+                - name: JAVA_OPTS
+                  value: '${METRICS_JAVA_OPTS}'
+#                - name: SECURITY_USER_NAME
+#                  value: '${METRICS_SECURITY_USERNAME}'
+#                - name: SECURITY_USER_PASSWORD
+#                  value: '${METRICS_SECURITY_PASSWORD}'
+                - name: SPRING_AUTOCONFIGURE_EXCLUDE
+                  value: 'org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration'
+              envFrom:
+                - configMapRef:
+                    name: scdf-metrics-collector-config
+              ports:
+                - name: http
+                  containerPort: 8080
+              readinessProbe:
+                httpGet:
+                  path: /actuator/info
+                  port: 8080
+                  scheme: HTTP
+                initialDelaySeconds: 30
+                timeoutSeconds: 10
+              livenessProbe:
+                httpGet:
+                  path: /actuator/health
+                  port: 8080
+                  scheme: HTTP
+                initialDelaySeconds: 30
+                timeoutSeconds: 10
+              resources:
+                limits:
+                  cpu: '${METRICS_SERVER_LIMITS_CPU}'
+                  memory: '${METRICS_SERVER_LIMITS_MEMORY}'
+                requests:
+                  cpu: '${METRICS_SERVER_REQUESTS_CPU}'
+                  memory: '${METRICS_SERVER_REQUESTS_MEMORY}'
+          restartPolicy: Always
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        name: scdf-metrics-collector
+      name: scdf-metrics-collector
+    spec:
+      ports:
+        - name: http
+          port: 8080
+          targetPort: http
+      selector:
+        name: scdf-metrics-collector
+  - apiVersion: v1
+    kind: DeploymentConfig
+    metadata:
+      name: redis
+    spec:
+      triggers:
+        - type: ConfigChange
+      replicas: 1
+      selector:
+        name: redis
+      template:
+        metadata:
+          labels:
+            name: redis
+        spec:
+          containers:
+            - name: redis
+              image: 'redis'
+              ports:
+                - name: redis
+                  containerPort: 6379
+              readinessProbe:
+                tcpSocket:
+                  port: 6379
+                initialDelaySeconds: 5
+                timeoutSeconds: 5
+              livenessProbe:
+                tcpSocket:
+                  port: 6379
+                initialDelaySeconds: 5
+                timeoutSeconds: 5
+          restartPolicy: Always
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        name: redis
+      name: redis
+    spec:
+      ports:
+        - name: redis
+          port: 6379
+          targetPort: redis
+      selector:
+        name: redis
+
+parameters:
+  - name: JAVA_OPTS
+    displayName: 'Options to customise the Java runtime'
+    description: 'Options to customise the Java runtime. E.g. -Xms512m -Xmx512m'
+    value: '-Xms384m -Xmx384m -Duser.timezone=Europe/Zurich'
+  - name: ENABLE_CONFIG_SERVER
+    displayName: 'Enable Spring Cloud Config Server'
+    description: 'Flag (true/false) indicating whether to enable Spring Cloud Config Server support'
+    value: 'false'
+  - name: ENABLE_ANALYTICS
+    displayName: 'Enable Spring Cloud Data Flow Analytics'
+    description: 'Flag (true/false) indicating whether to enable the analytics feature. See http://docs.spring.io/spring-cloud-dataflow/docs/1.2.0.RELEASE/reference/html/arch-analytics.html'
+    value: 'true'
+    required: true
+  - name: DEPLOYER_REQUESTS_MEMORY
+    displayName: 'Default memory request for a Pod'
+    description: 'The default memory request for a Pod. See https://docs.openshift.org/latest/dev_guide/compute_resources.html#dev-compute-resources'
+    value: 256Mi
+  - name: DEPLOYER_REQUESTS_CPU
+    displayName: 'Default CPU request for a Pod'
+    description: 'The default CPU request for a Pod. See https://docs.openshift.org/latest/dev_guide/compute_resources.html#dev-compute-resources'
+    value: 500m
+  - name: DEPLOYER_LIMITS_MEMORY
+    displayName: 'Default memory limit for a Pod'
+    description: 'The default memory limit for a Pod. See https://docs.openshift.org/latest/dev_guide/compute_resources.html#dev-compute-resources'
+    value: 512Mi
+  - name: DEPLOYER_LIMITS_CPU
+    displayName: 'Default CPU limit for a Pod'
+    description: 'The default CPU limit for a Pod. See https://docs.openshift.org/latest/dev_guide/compute_resources.html#dev-compute-resources'
+    value: 1000m
+  - name: DEPLOYER_SERVER_REQUESTS_MEMORY
+    displayName: 'Default memory request for the Data Flow Server'
+    description: 'The default memory request for the Data Flow Server. See https://docs.openshift.org/latest/dev_guide/compute_resources.html#dev-compute-resources'
+    value: 256Mi
+  - name: DEPLOYER_SERVER_REQUESTS_CPU
+    displayName: 'Default CPU request for the Data Flow Server'
+    description: 'The default CPU request for the Data Flow Server. See https://docs.openshift.org/latest/dev_guide/compute_resources.html#dev-compute-resources'
+    value: 500m
+  - name: DEPLOYER_SERVER_LIMITS_MEMORY
+    displayName: 'Default memory limit for the Data Flow Server'
+    description: 'The default memory limit for the Data Flow Server. See https://docs.openshift.org/latest/dev_guide/compute_resources.html#dev-compute-resources'
+    value: 1024Mi
+  - name: DEPLOYER_SERVER_LIMITS_CPU
+    displayName: 'Default CPU limit for the Data Flow Server'
+    description: 'The default CPU limit for the Data Flow Server. See https://docs.openshift.org/latest/dev_guide/compute_resources.html#dev-compute-resources'
+    value: 2000m
+  - name: SPRING_APPLICATION_JSON
+    displayName: 'Spring Application JSON for addtional advanced configurations'
+    description: 'Specified as a single line JSON document. See http://docs.spring.io/spring-boot/docs/current/reference/html/boot-features-external-config.html'
+  - name: REMOTE_MAVEN_REPO_NAME
+    displayName: 'Remote Maven repository name'
+    description: 'The name of a remote Maven repository. See http://docs.spring.io/spring-cloud-dataflow/docs/current/reference/html/getting-started-deploying-spring-cloud-dataflow.html#getting-started-deploying-spring-cloud-dataflow'
+    value: spring
+  - name: REMOTE_MAVEN_REPO_URL
+    displayName: 'Remote Maven repository URL'
+    description: 'The URL of a remote Maven repository from which maven:// resources will be resolved. See http://docs.spring.io/spring-cloud-dataflow/docs/current/reference/html/getting-started-deploying-spring-cloud-dataflow.html#getting-started-deploying-spring-cloud-dataflow'
+    value: 'https://repo.spring.io/libs-snapshot'
+  - name: REMOTE_MAVEN_REPO_AUTH_USERNAME
+    displayName: 'Remote Maven repository username'
+    description: 'The username to authenticate with the remote Maven repository. See http://docs.spring.io/spring-cloud-dataflow/docs/current/reference/html/getting-started-deploying-spring-cloud-dataflow.html#getting-started-deploying-spring-cloud-dataflow'
+  - name: REMOTE_MAVEN_REPO_AUTH_PASSWORD
+    displayName: 'Remote Maven repository password'
+    description: 'The password to authenticate with the remote Maven repository. See http://docs.spring.io/spring-cloud-dataflow/docs/current/reference/html/getting-started-deploying-spring-cloud-dataflow.html#getting-started-deploying-spring-cloud-dataflow'
+  - name: REMOTE_MAVEN_REPO_RESOLVE_POM
+    displayName: 'In addition to the Jar artifact, resolve the POM artifact'
+    description: 'The POM artifact contains project metadata that is necessary depending on the build strategy chosen'
+    value: 'false'
+  - name: KAFKA_BROKER_SERVICE_HOST
+    displayName: 'Kafka Service Host'
+    description: 'Service name generated by the kafka helm deployment'
+    required: true
+    value: scdf-kafka-cp-kafka
+  - name: KAFKA_BROKER_SERVICE_PORT
+    displayName: 'Kafka Service Port'
+    description: 'Service port generated by the kafka helm deployment'
+    required: true
+    value: '9092'
+  - name: ROUTE_HOST
+    displayName: 'The OpenShift Route host value'
+    description: 'A explicit Route host value, otherise the default is used. See https://docs.openshift.org/latest/dev_guide/routes.html'
+  - name: METRICS_JAVA_OPTS
+    displayName: 'Options to customise the Java runtime for the metrics collector'
+    description: 'Options to customise the Java runtime for the metrics collector. E.g. -Xms512m -Xmx512m'
+    value: '-Xms256m -Xmx256m'
+  - name: METRICS_SECURITY_USERNAME
+    displayName: 'Metrics collector username'
+    description: 'The Spring Cloud Data Flow Metrics collector username'
+    value: scdf
+  - name: METRICS_SECURITY_PASSWORD
+    displayName: 'Metrics collector password'
+    description: 'The Spring Cloud Data Flow Metrics collector password'
+    value: scdf
+  - name: METRICS_SERVER_REQUESTS_MEMORY
+    displayName: 'Default memory request for the Metrics collector'
+    description: 'The default memory request for the Metrics collector. See https://docs.openshift.org/latest/dev_guide/compute_resources.html#dev-compute-resources'
+    value: 256Mi
+  - name: METRICS_SERVER_REQUESTS_CPU
+    displayName: 'Default CPU request for the Metrics collector'
+    description: 'The default CPU request for the Metrics collector. See https://docs.openshift.org/latest/dev_guide/compute_resources.html#dev-compute-resources'
+    value: 500m
+  - name: METRICS_SERVER_LIMITS_MEMORY
+    displayName: 'Default memory limit for the Metrics collector'
+    description: 'The default memory limit for the Metrics collector. See https://docs.openshift.org/latest/dev_guide/compute_resources.html#dev-compute-resources'
+    value: 1024Mi
+  - name: METRICS_SERVER_LIMITS_CPU
+    displayName: 'Default CPU limit for the Metrics collector'
+    description: 'The default CPU limit for the Metrics collector. See https://docs.openshift.org/latest/dev_guide/compute_resources.html#dev-compute-resources'
+    value: 2000m
