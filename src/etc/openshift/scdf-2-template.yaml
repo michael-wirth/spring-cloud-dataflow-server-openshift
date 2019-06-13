@@ -55,14 +55,13 @@ objects:
               application-properties:
                 stream:
                   spring.cloud.config.eanbled: false
-                  spring.cloud.stream.bindings.applicationMetrics.destination: metrics
+                  spring.autoconfigure.exclude: org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
                   spring.cloud.stream.kafka.binder.brokers: ${KAFKA_BROKER_SERVICE_HOST}:${KAFKA_BROKER_SERVICE_PORT}
                   management.endpoints.web.exposure.include: '*'
                   management.endpoint.health.show-details: always
-                  management.metrics.export.prometheus.enabled: true
                 task:
                   spring.cloud.config.eanbled: false
-                  spring.cloud.stream.bindings.applicationMetrics.destination: metrics
+                  spring.autoconfigure.exclude: org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
                   spring.cloud.stream.kafka.binder.brokers: ${KAFKA_BROKER_SERVICE_HOST}:${KAFKA_BROKER_SERVICE_PORT}
                   management.endpoints.web.exposure.include: '*'
                   management.endpoint.health.show-details: always
@@ -355,67 +354,67 @@ objects:
         name: scdf-kafka
       port:
         targetPort: http
-  - apiVersion: v1
-    kind: ConfigMap
-    metadata:
-      name: scdf-metrics-collector-config
-    data:
-      SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS: '${KAFKA_BROKER_SERVICE_HOST}:${KAFKA_BROKER_SERVICE_PORT}'
-  - apiVersion: v1
-    kind: DeploymentConfig
-    metadata:
-      name: scdf-metrics-collector
-    spec:
-      triggers:
-        - type: ConfigChange
-      replicas: 1
-      selector:
-        name: scdf-metrics-collector
-      template:
-        metadata:
-          labels:
-            name: scdf-metrics-collector
-        spec:
-          containers:
-            - name: scdf-metrics-collector
-              image: michaelwirth/metrics-collector-kafka:latest
-              env:
-                - name: JAVA_OPTS
-                  value: '${METRICS_JAVA_OPTS}'
+#  - apiVersion: v1
+#    kind: ConfigMap
+#    metadata:
+#      name: scdf-metrics-collector-config
+#    data:
+#      SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS: '${KAFKA_BROKER_SERVICE_HOST}:${KAFKA_BROKER_SERVICE_PORT}'
+#  - apiVersion: v1
+#    kind: DeploymentConfig
+#    metadata:
+#      name: scdf-metrics-collector
+#    spec:
+#      triggers:
+#        - type: ConfigChange
+#      replicas: 1
+#      selector:
+#        name: scdf-metrics-collector
+#      template:
+#        metadata:
+#          labels:
+#            name: scdf-metrics-collector
+#        spec:
+#          containers:
+#            - name: scdf-metrics-collector
+#              image: michaelwirth/metrics-collector-kafka:latest
+#              env:
+#                - name: JAVA_OPTS
+#                  value: '${METRICS_JAVA_OPTS}'
 #                - name: SECURITY_USER_NAME
 #                  value: '${METRICS_SECURITY_USERNAME}'
 #                - name: SECURITY_USER_PASSWORD
 #                  value: '${METRICS_SECURITY_PASSWORD}'
-                - name: SPRING_AUTOCONFIGURE_EXCLUDE
-                  value: 'org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration'
-              envFrom:
-                - configMapRef:
-                    name: scdf-metrics-collector-config
-              ports:
-                - name: http
-                  containerPort: 8080
-              readinessProbe:
-                httpGet:
-                  path: /actuator/info
-                  port: 8080
-                  scheme: HTTP
-                initialDelaySeconds: 30
-                timeoutSeconds: 10
-              livenessProbe:
-                httpGet:
-                  path: /actuator/health
-                  port: 8080
-                  scheme: HTTP
-                initialDelaySeconds: 30
-                timeoutSeconds: 10
-              resources:
-                limits:
-                  cpu: '${METRICS_SERVER_LIMITS_CPU}'
-                  memory: '${METRICS_SERVER_LIMITS_MEMORY}'
-                requests:
-                  cpu: '${METRICS_SERVER_REQUESTS_CPU}'
-                  memory: '${METRICS_SERVER_REQUESTS_MEMORY}'
-          restartPolicy: Always
+#                - name: SPRING_AUTOCONFIGURE_EXCLUDE
+#                  value: 'org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration'
+#              envFrom:
+#                - configMapRef:
+#                    name: scdf-metrics-collector-config
+#              ports:
+#                - name: http
+#                  containerPort: 8080
+#              readinessProbe:
+#                httpGet:
+#                  path: /actuator/info
+#                  port: 8080
+#                  scheme: HTTP
+#                initialDelaySeconds: 30
+#                timeoutSeconds: 10
+#              livenessProbe:
+#                httpGet:
+#                  path: /actuator/health
+#                  port: 8080
+#                  scheme: HTTP
+#                initialDelaySeconds: 30
+#                timeoutSeconds: 10
+#              resources:
+#                limits:
+#                  cpu: '${METRICS_SERVER_LIMITS_CPU}'
+#                  memory: '${METRICS_SERVER_LIMITS_MEMORY}'
+#                requests:
+#                  cpu: '${METRICS_SERVER_REQUESTS_CPU}'
+#                  memory: '${METRICS_SERVER_REQUESTS_MEMORY}'
+#          restartPolicy: Always
   - apiVersion: v1
     kind: Service
     metadata:
